@@ -1,6 +1,18 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isSameMonth, addMonths, subMonths } from 'date-fns';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameDay,
+  isSameMonth,
+  addMonths,
+  subMonths,
+  startOfWeek,
+  endOfWeek,
+  addDays
+} from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useMedication } from '../context/MedicationContext';
 import * as FiIcons from 'react-icons/fi';
@@ -13,9 +25,14 @@ const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
 
+  // Generate calendar days with proper alignment
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
-  const calendarDays = eachDayOfInterval({ start: monthStart, end: monthEnd });
+  const startDate = startOfWeek(monthStart, { weekStartsOn: 0 }); // Start from Sunday
+  const endDate = endOfWeek(monthEnd, { weekStartsOn: 0 }); // End on Saturday
+
+  // Create array of all days to display
+  const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
   const getMedicationsForDate = (date) => {
     return medications.filter(med => 
@@ -57,11 +74,9 @@ const Calendar = () => {
           >
             <SafeIcon icon={FiChevronLeft} className="text-medical-600 dark:text-medical-400" />
           </motion.button>
-          
           <h2 className="text-xl font-bold text-medical-800 dark:text-medical-200">
             {format(currentDate, 'MMMM yyyy', { locale: es })}
           </h2>
-          
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={nextMonth}
@@ -146,7 +161,7 @@ const Calendar = () => {
             <h3 className="text-lg font-semibold text-medical-800 dark:text-medical-200 mb-4">
               {format(selectedDate, "EEEE, d 'de' MMMM", { locale: es })}
             </h3>
-
+            
             {selectedDateMedications.length === 0 ? (
               <div className="text-center py-8">
                 <SafeIcon icon={FiPill} className="text-4xl text-medical-400 mx-auto mb-2" />

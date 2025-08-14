@@ -11,8 +11,7 @@ const { FiSave, FiX, FiChevronDown } = FiIcons;
 const AddMedication = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { addMedication, updateMedication, getMedicationById, commonMedications } = useMedication();
-  
+  const { addMedication, updateMedication, getMedicationById, commonMedications, isLoading } = useMedication();
   const isEditing = Boolean(id);
   const existingMedication = isEditing ? getMedicationById(id) : null;
 
@@ -22,9 +21,9 @@ const AddMedication = () => {
     dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     notes: ''
   });
-
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (existingMedication) {
@@ -39,7 +38,7 @@ const AddMedication = () => {
 
   useEffect(() => {
     if (formData.name) {
-      const filtered = commonMedications.filter(med =>
+      const filtered = commonMedications.filter(med => 
         med.toLowerCase().includes(formData.name.toLowerCase())
       );
       setFilteredSuggestions(filtered);
@@ -48,27 +47,38 @@ const AddMedication = () => {
     }
   }, [formData.name, commonMedications]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!formData.name.trim()) {
       alert('Por favor ingresa el nombre del medicamento');
       return;
     }
-
-    const medicationData = {
-      ...formData,
-      dateTime: new Date(formData.dateTime).toISOString(),
-      quantity: parseInt(formData.quantity)
-    };
-
-    if (isEditing) {
-      updateMedication(id, medicationData);
-    } else {
-      addMedication(medicationData);
+    
+    try {
+      setIsSaving(true);
+      
+      const medicationData = {
+        ...formData,
+        dateTime: new Date(formData.dateTime).toISOString(),
+        quantity: parseInt(formData.quantity)
+      };
+      
+      console.log('Submitting medication data:', medicationData);
+      
+      if (isEditing) {
+        await updateMedication(id, medicationData);
+      } else {
+        await addMedication(medicationData);
+      }
+      
+      navigate('/');
+    } catch (error) {
+      console.error('Error saving medication:', error);
+      alert('Error al guardar el medicamento. Por favor intenta nuevamente.');
+    } finally {
+      setIsSaving(false);
     }
-
-    navigate('/');
   };
 
   const handleNameChange = (e) => {
@@ -105,9 +115,9 @@ const AddMedication = () => {
                 placeholder="Ej: Paracetamol, Ibuprofeno..."
                 required
               />
-              <SafeIcon 
-                icon={FiChevronDown} 
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-medical-400 pointer-events-none" 
+              <SafeIcon
+                icon={FiChevronDown}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-medical-400 pointer-events-none"
               />
             </div>
             
@@ -181,9 +191,18 @@ const AddMedication = () => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              className="flex-1 bg-primary-600 hover:bg-primary-700 text-white py-3 px-6 rounded-lg font-medium flex items-center justify-center space-x-2"
+              disabled={isSaving || isLoading}
+              className={`
+                flex-1 bg-primary-600 hover:bg-primary-700 text-white py-3 px-6 rounded-lg 
+                font-medium flex items-center justify-center space-x-2
+                ${(isSaving || isLoading) ? 'opacity-70 cursor-not-allowed' : ''}
+              `}
             >
-              <SafeIcon icon={FiSave} />
+              {isSaving || isLoading ? (
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+              ) : (
+                <SafeIcon icon={FiSave} />
+              )}
               <span>{isEditing ? 'Actualizar' : 'Guardar'}</span>
             </motion.button>
             
@@ -192,12 +211,24 @@ const AddMedication = () => {
               whileTap={{ scale: 0.98 }}
               type="button"
               onClick={() => navigate('/')}
-              className="flex-1 bg-medical-500 hover:bg-medical-600 text-white py-3 px-6 rounded-lg font-medium flex items-center justify-center space-x-2"
+              disabled={isSaving || isLoading}
+              className={`
+                flex-1 bg-medical-500 hover:bg-medical-600 text-white py-3 px-6 rounded-lg 
+                font-medium flex items-center justify-center space-x-2
+                ${(isSaving || isLoading) ? 'opacity-70 cursor-not-allowed' : ''}
+              `}
             >
               <SafeIcon icon={FiX} />
               <span>Cancelar</span>
             </motion.button>
           </div>
+          
+          {/* Debug Info in Development */}
+          {process.env.NODE_ENV !== 'production' && (
+            <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs">
+              <p className="font-mono">Form data: {JSON.stringify(formData, null, 2)}</p>
+            </div>
+          )}
         </form>
       </div>
     </motion.div>

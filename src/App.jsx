@@ -1,24 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import Header from './components/Header';
-import Navigation from './components/Navigation';
-import Home from './pages/Home';
-import AddMedication from './pages/AddMedication';
-import History from './pages/History';
-import Calendar from './pages/Calendar';
-import Statistics from './pages/Statistics';
-import Settings from './pages/Settings';
-import { MedicationProvider } from './context/MedicationContext';
-import { ThemeProvider } from './context/ThemeContext';
+import React, { useState, useEffect } from 'react'
+import { HashRouter as Router, Routes, Route } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import Header from './components/Header'
+import Navigation from './components/Navigation'
+import OfflineIndicator from './components/OfflineIndicator'
+import DebugInfo from './components/DebugInfo'
+import Home from './pages/Home'
+import AddMedication from './pages/AddMedication'
+import History from './pages/History'
+import Calendar from './pages/Calendar'
+import Statistics from './pages/Statistics'
+import Settings from './pages/Settings'
+import { MedicationProvider } from './context/MedicationContext'
+import { ThemeProvider } from './context/ThemeContext'
 
 function App() {
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // Simulate app loading
-    setTimeout(() => setIsLoading(false), 1000);
-  }, []);
+    setTimeout(() => setIsLoading(false), 1000)
+  }, [])
 
   if (isLoading) {
     return (
@@ -32,9 +34,12 @@ function App() {
           <h2 className="text-xl font-semibold text-medical-700 dark:text-medical-300">
             Cargando Seguimiento de Analgésicos
           </h2>
+          <p className="text-sm text-medical-500 dark:text-medical-400 mt-2">
+            Conectando con la nube...
+          </p>
         </motion.div>
       </div>
-    );
+    )
   }
 
   return (
@@ -42,8 +47,9 @@ function App() {
       <MedicationProvider>
         <Router>
           <div className="min-h-screen bg-medical-50 dark:bg-medical-900 transition-colors duration-300">
-            <div className="max-w-md mx-auto bg-white dark:bg-medical-800 min-h-screen shadow-xl">
+            <div className="max-w-md mx-auto bg-white dark:bg-medical-800 min-h-screen shadow-xl relative">
               <Header />
+              <OfflineIndicator />
               
               <main className="pb-20">
                 <AnimatePresence mode="wait">
@@ -59,13 +65,14 @@ function App() {
                 </AnimatePresence>
               </main>
               
+              <DebugInfo />
               <Navigation />
             </div>
           </div>
         </Router>
       </MedicationProvider>
     </ThemeProvider>
-  );
+  )
 }
 
-export default App;
+export default App
