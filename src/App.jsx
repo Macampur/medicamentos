@@ -18,8 +18,9 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate app loading
-    setTimeout(() => setIsLoading(false), 1000)
+    // App initialization delay
+    const timer = setTimeout(() => setIsLoading(false), 2000)
+    return () => clearTimeout(timer)
   }, [])
 
   if (isLoading) {
@@ -32,11 +33,34 @@ function App() {
         >
           <div className="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-medical-700 dark:text-medical-300">
-            Cargando Seguimiento de Analgésicos
+            Seguimiento de Analgésicos
           </h2>
           <p className="text-sm text-medical-500 dark:text-medical-400 mt-2">
-            Conectando con la nube...
+            Inicializando y cargando datos...
           </p>
+          <div className="mt-4 space-y-1 text-xs text-medical-400">
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.5 }}
+            >
+              🔄 Conectando con la base de datos
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1 }}
+            >
+              📋 Cargando medicamentos
+            </motion.p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.5 }}
+            >
+              ✅ Preparando la aplicación
+            </motion.p>
+          </div>
         </motion.div>
       </div>
     )
@@ -50,7 +74,7 @@ function App() {
             <div className="max-w-md mx-auto bg-white dark:bg-medical-800 min-h-screen shadow-xl relative">
               <Header />
               <OfflineIndicator />
-              
+
               <main className="pb-20">
                 <AnimatePresence mode="wait">
                   <Routes>
@@ -64,7 +88,7 @@ function App() {
                   </Routes>
                 </AnimatePresence>
               </main>
-              
+
               <DebugInfo />
               <Navigation />
             </div>

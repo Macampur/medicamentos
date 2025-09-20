@@ -34,66 +34,71 @@ export const MedicationProvider = ({ children }) => {
     }
   }, [])
 
-  // Initialize tables on mount
+  // Initialize and load data on mount
   useEffect(() => {
-    const initTables = async () => {
-      if (isOnline) {
-        try {
-          setIsLoading(true)
-          const result = await MedicationService.initializeTables()
-          setInitComplete(result)
-          if (!result) {
-            setError('Error initializing database tables')
+    const initializeApp = async () => {
+      console.log('🚀 Initializing app...')
+      setIsLoading(true)
+      
+      try {
+        if (isOnline) {
+          // First initialize tables
+          console.log('📋 Initializing database tables...')
+          const tablesInitialized = await MedicationService.initializeTables()
+          
+          if (tablesInitialized) {
+            console.log('✅ Tables initialized, loading data...')
+            // Then load all data
+            await loadDataFromSupabase()
+            setInitComplete(true)
           } else {
-            setError(null)
+            console.log('❌ Failed to initialize tables, loading local data...')
+            setError('Error initializing database tables')
+            loadLocalData()
           }
-        } catch (err) {
-          console.error('Error initializing tables:', err)
-          setError('Error connecting to database: ' + err.message)
-        } finally {
-          setIsLoading(false)
+        } else {
+          console.log('📱 Offline mode, loading local data...')
+          loadLocalData()
         }
+      } catch (err) {
+        console.error('💥 Error during app initialization:', err)
+        setError('Error connecting to database: ' + err.message)
+        loadLocalData()
+      } finally {
+        setIsLoading(false)
       }
     }
-    
-    initTables()
-  }, [isOnline])
 
-  // Load data on mount or when initialization completes
-  useEffect(() => {
-    if (isOnline && initComplete) {
-      loadData()
-    } else if (!isOnline) {
-      loadLocalData()
-    }
-  }, [isOnline, initComplete])
+    initializeApp()
+  }, []) // Solo se ejecuta al montar
 
-  // Sync when coming back online
+  // Auto-sync when coming back online
   useEffect(() => {
-    if (isOnline && lastSync) {
+    if (isOnline && initComplete && lastSync) {
       const timeSinceSync = Date.now() - lastSync
       if (timeSinceSync > 5 * 60 * 1000) { // 5 minutes
-        loadData()
+        console.log('🔄 Auto-syncing after being offline...')
+        loadDataFromSupabase()
       }
     }
-  }, [isOnline, lastSync])
+  }, [isOnline, initComplete, lastSync])
 
   const loadLocalData = () => {
-    setIsLoading(true)
+    console.log('💾 Loading data from local storage...')
     try {
       // Load from local storage when offline
       const savedMedications = localStorage.getItem('medications')
       const savedCommonMedications = localStorage.getItem('commonMedications')
-      
+
       if (savedMedications) {
         const parsedMeds = JSON.parse(savedMedications)
-        console.log('Loaded medications from local storage:', parsedMeds.length)
+        console.log('📦 Loaded medications from local storage:', parsedMeds.length)
         setMedications(parsedMeds)
       }
-      
+
       if (savedCommonMedications) {
         const parsedCommonMeds = JSON.parse(savedCommonMedications)
-        console.log('Loaded common medications from local storage:', parsedCommonMeds.length)
+        console.log('📦 Loaded common medications from local storage:', parsedCommonMeds.length)
         setCommonMedications(parsedCommonMeds)
       } else {
         // Set default medications if none exist
@@ -104,47 +109,58 @@ export const MedicationProvider = ({ children }) => {
         setCommonMedications(defaultMeds)
         localStorage.setItem('commonMedications', JSON.stringify(defaultMeds))
       }
-      
+
       setError(null)
     } catch (error) {
-      console.error('Error loading local data:', error)
+      console.error('💥 Error loading local data:', error)
       setError('Error loading local data: ' + error.message)
-    } finally {
-      setIsLoading(false)
     }
   }
 
-  const loadData = async () => {
-    setIsLoading(true)
+  const loadDataFromSupabase = async () => {
+    console.log('☁️ Loading data from Supabase...')
+    
     try {
-      if (isOnline) {
-        console.log('Loading data from Supabase...')
-        // Load from Supabase
-        const [medicationsData, commonMedsData] = await Promise.all([
-          MedicationService.getAllMedications(),
-          MedicationService.getCommonMedications()
-        ])
-        
-        console.log('Loaded medications from Supabase:', medicationsData.length)
-        console.log('Loaded common medications from Supabase:', commonMedsData.length)
-        
-        setMedications(medicationsData)
-        setCommonMedications(commonMedsData)
-        setLastSync(Date.now())
-        setError(null)
-        
-        // Update local storage as backup
-        localStorage.setItem('medications', JSON.stringify(medicationsData))
-        localStorage.setItem('commonMedications', JSON.stringify(commonMedsData))
-      } else {
-        // Load from local storage when offline
-        loadLocalData()
-      }
+      // Load from Supabase
+      const [medicationsData, commonMedsData] = await Promise.all([
+        MedicationService.getAllMedications(),
+        MedicationService.getCommonMedications()
+      ])
+
+      console.log('✅ Loaded medications from Supabase:', medicationsData.length)
+      console.log('✅ Loaded common medications from Supabase:', commonMedsData.length)
+
+      setMedications(medicationsData)
+      setCommonMedications(commonMedsData)
+      setLastSync(Date.now())
+      setError(null)
+
+      // Update local storage as backup
+      localStorage.setItem('medications', JSON.stringify(medicationsData))
+      localStorage.setItem('commonMedications', JSON.stringify(commonMedsData))
+      
+      return { medicationsData, commonMedsData }
     } catch (error) {
-      console.error('Error loading data:', error)
+      console.error('💥 Error loading data from Supabase:', error)
       setError('Error loading data: ' + error.message)
       // Fallback to local storage
       loadLocalData()
+      throw error
+    }
+  }
+
+  const refreshData = async () => {
+    if (!isOnline) {
+      console.log('📱 Offline, cannot refresh from server')
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      await loadDataFromSupabase()
+      console.log('🔄 Data refreshed successfully')
+    } catch (error) {
+      console.error('💥 Error refreshing data:', error)
     } finally {
       setIsLoading(false)
     }
@@ -152,20 +168,18 @@ export const MedicationProvider = ({ children }) => {
 
   const addMedication = async (medication) => {
     try {
-      console.log('Adding medication:', medication)
+      console.log('➕ Adding medication:', medication)
       setIsLoading(true)
-      
+
       if (isOnline) {
         const newMedication = await MedicationService.addMedication(medication)
-        console.log('Medication added successfully:', newMedication)
-        
+        console.log('✅ Medication added successfully:', newMedication)
         setMedications(prev => [newMedication, ...prev])
         setError(null)
-        
+
         // Update local storage
         const updated = [newMedication, ...medications]
         localStorage.setItem('medications', JSON.stringify(updated))
-        
         return newMedication
       } else {
         // Offline mode - store locally
@@ -175,15 +189,14 @@ export const MedicationProvider = ({ children }) => {
           createdAt: new Date().toISOString(),
           _pendingSync: true
         }
-        
+
         const updated = [newMedication, ...medications]
         setMedications(updated)
         localStorage.setItem('medications', JSON.stringify(updated))
-        
         return newMedication
       }
     } catch (error) {
-      console.error('Error adding medication:', error)
+      console.error('💥 Error adding medication:', error)
       setError('Error adding medication: ' + error.message)
       throw error
     } finally {
@@ -193,39 +206,29 @@ export const MedicationProvider = ({ children }) => {
 
   const updateMedication = async (id, updatedMedication) => {
     try {
-      console.log('Updating medication:', id, updatedMedication)
+      console.log('✏️ Updating medication:', id, updatedMedication)
       setIsLoading(true)
-      
+
       if (isOnline) {
         const updated = await MedicationService.updateMedication(id, updatedMedication)
-        
-        setMedications(prev => 
-          prev.map(med => med.id === id ? updated : med)
-        )
+        setMedications(prev => prev.map(med => med.id === id ? updated : med))
         setError(null)
-        
+
         // Update local storage
         const updatedList = medications.map(med => med.id === id ? updated : med)
         localStorage.setItem('medications', JSON.stringify(updatedList))
-        
         return updated
       } else {
         // Offline mode
         const updated = { ...updatedMedication, _pendingSync: true }
-        
-        setMedications(prev =>
-          prev.map(med => med.id === id ? { ...med, ...updated } : med)
-        )
-        
-        const updatedList = medications.map(med => 
-          med.id === id ? { ...med, ...updated } : med
-        )
+        setMedications(prev => prev.map(med => med.id === id ? { ...med, ...updated } : med))
+
+        const updatedList = medications.map(med => med.id === id ? { ...med, ...updated } : med)
         localStorage.setItem('medications', JSON.stringify(updatedList))
-        
         return { id, ...updated }
       }
     } catch (error) {
-      console.error('Error updating medication:', error)
+      console.error('💥 Error updating medication:', error)
       setError('Error updating medication: ' + error.message)
       throw error
     } finally {
@@ -235,21 +238,20 @@ export const MedicationProvider = ({ children }) => {
 
   const deleteMedication = async (id) => {
     try {
-      console.log('Deleting medication:', id)
+      console.log('🗑️ Deleting medication:', id)
       setIsLoading(true)
-      
+
       if (isOnline) {
         await MedicationService.deleteMedication(id)
       }
-      
+
       const updated = medications.filter(med => med.id !== id)
       setMedications(updated)
       localStorage.setItem('medications', JSON.stringify(updated))
       setError(null)
-      
       return true
     } catch (error) {
-      console.error('Error deleting medication:', error)
+      console.error('💥 Error deleting medication:', error)
       setError('Error deleting medication: ' + error.message)
       throw error
     } finally {
@@ -268,7 +270,6 @@ export const MedicationProvider = ({ children }) => {
     if (!exists) {
       try {
         setIsLoading(true)
-        
         if (isOnline) {
           const success = await MedicationService.addCommonMedication(formattedName)
           if (success) {
@@ -284,7 +285,7 @@ export const MedicationProvider = ({ children }) => {
           localStorage.setItem('commonMedications', JSON.stringify(updated))
         }
       } catch (error) {
-        console.error('Error adding common medication:', error)
+        console.error('💥 Error adding common medication:', error)
         setError('Error adding common medication: ' + error.message)
       } finally {
         setIsLoading(false)
@@ -309,19 +310,19 @@ export const MedicationProvider = ({ children }) => {
 
   const clearAllData = async () => {
     try {
-      console.log('Clearing all data')
+      console.log('🧹 Clearing all data')
       setIsLoading(true)
-      
+
       if (isOnline) {
         await MedicationService.clearAllData()
       }
-      
+
       setMedications([])
       setCommonMedications([])
       localStorage.removeItem('medications')
       localStorage.removeItem('commonMedications')
       setError(null)
-      
+
       // Reload default common medications
       if (isOnline) {
         const commonMedsData = await MedicationService.getCommonMedications()
@@ -335,10 +336,10 @@ export const MedicationProvider = ({ children }) => {
         setCommonMedications(defaultMeds)
         localStorage.setItem('commonMedications', JSON.stringify(defaultMeds))
       }
-      
+
       return true
     } catch (error) {
-      console.error('Error clearing data:', error)
+      console.error('💥 Error clearing data:', error)
       setError('Error clearing data: ' + error.message)
       throw error
     } finally {
@@ -350,13 +351,13 @@ export const MedicationProvider = ({ children }) => {
     if (!isOnline) return
 
     try {
-      console.log('Syncing pending changes')
+      console.log('🔄 Syncing pending changes')
       setIsLoading(true)
-      
+
       // Find medications that need syncing
       const pendingMedications = medications.filter(med => med._pendingSync)
-      console.log('Syncing pending changes:', pendingMedications.length)
-      
+      console.log('📤 Syncing pending changes:', pendingMedications.length)
+
       for (const med of pendingMedications) {
         if (med.id.startsWith('offline_')) {
           // This is a new medication created offline
@@ -368,12 +369,12 @@ export const MedicationProvider = ({ children }) => {
           await MedicationService.updateMedication(med.id, medicationData)
         }
       }
-      
+
       // Reload all data to get the latest
-      await loadData()
+      await loadDataFromSupabase()
       setError(null)
     } catch (error) {
-      console.error('Error syncing pending changes:', error)
+      console.error('💥 Error syncing pending changes:', error)
       setError('Error syncing changes: ' + error.message)
     } finally {
       setIsLoading(false)
@@ -389,6 +390,7 @@ export const MedicationProvider = ({ children }) => {
         isLoading,
         lastSync,
         error,
+        initComplete,
         addMedication,
         updateMedication,
         deleteMedication,
@@ -397,7 +399,7 @@ export const MedicationProvider = ({ children }) => {
         clearAllData,
         addToCommonMedications,
         syncPendingChanges,
-        refreshData: loadData
+        refreshData
       }}
     >
       {children}
