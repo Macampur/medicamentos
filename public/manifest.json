@@ -1,0 +1,21 @@
+{
+  "name": "Seguimiento de Analgésicos",
+  "short_name": "Analgésicos",
+  "description": "Aplicación para el seguimiento personal de medicamentos analgésicos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0ea5e9",
+  "icons": [
+    {
+      "src": "/medicine-icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/medicine-icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
