@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { useMedication } from '../context/MedicationContext';
+import { formatDateBrazil, isDateInRange } from '../utils/dateUtils';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
@@ -17,14 +16,13 @@ const History = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const filteredMedications = medications.filter(med => {
-    const matchesSearch = med.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (med.notes && med.notes.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSearch = med.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      (med.notes && med.notes.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesMedication = !selectedMedication || med.name === selectedMedication;
     
-    const medDate = new Date(med.dateTime);
-    const matchesDateRange = (!dateRange.start || medDate >= new Date(dateRange.start)) &&
-                            (!dateRange.end || medDate <= new Date(dateRange.end));
+    // Usar la función de utilidades para verificar el rango de fechas
+    const matchesDateRange = isDateInRange(med.dateTime, dateRange.start, dateRange.end);
     
     return matchesSearch && matchesMedication && matchesDateRange;
   });
@@ -45,12 +43,7 @@ const History = () => {
 
   const container = {
     hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.05
-      }
-    }
+    show: { opacity: 1, transition: { staggerChildren: 0.05 } }
   };
 
   const item = {
@@ -68,7 +61,10 @@ const History = () => {
       <div className="bg-white dark:bg-medical-800 rounded-xl p-4 shadow-sm">
         <div className="flex items-center space-x-2 mb-4">
           <div className="relative flex-1">
-            <SafeIcon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-medical-400" />
+            <SafeIcon 
+              icon={FiSearch} 
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-medical-400" 
+            />
             <input
               type="text"
               placeholder="Buscar medicamentos o notas..."
@@ -120,7 +116,7 @@ const History = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-medical-700 dark:text-medical-300 mb-1">
-                    Fecha inicio
+                    Fecha inicio (Brasil/São Paulo)
                   </label>
                   <input
                     type="date"
@@ -133,7 +129,7 @@ const History = () => {
               <div className="flex justify-between items-center">
                 <div className="flex-1 mr-4">
                   <label className="block text-sm font-medium text-medical-700 dark:text-medical-300 mb-1">
-                    Fecha fin
+                    Fecha fin (Brasil/São Paulo)
                   </label>
                   <input
                     type="date"
@@ -149,6 +145,28 @@ const History = () => {
                   Limpiar
                 </button>
               </div>
+              
+              {/* Debug info for date filtering */}
+              {(dateRange.start || dateRange.end) && (
+                <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900 rounded-lg text-xs">
+                  <p className="font-medium text-blue-800 dark:text-blue-200 mb-1">
+                    🇧🇷 Filtro de fechas (Brasil/São Paulo):
+                  </p>
+                  {dateRange.start && (
+                    <p className="text-blue-700 dark:text-blue-300">
+                      Desde: {dateRange.start} 00:00:00 (Brasil)
+                    </p>
+                  )}
+                  {dateRange.end && (
+                    <p className="text-blue-700 dark:text-blue-300">
+                      Hasta: {dateRange.end} 23:59:59 (Brasil)
+                    </p>
+                  )}
+                  <p className="text-blue-600 dark:text-blue-400 mt-1">
+                    Resultados: {filteredMedications.length} medicamentos
+                  </p>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -157,6 +175,11 @@ const History = () => {
       {/* Results Count */}
       <div className="text-sm text-medical-600 dark:text-medical-400">
         {filteredMedications.length} registro{filteredMedications.length !== 1 ? 's' : ''} encontrado{filteredMedications.length !== 1 ? 's' : ''}
+        {(dateRange.start || dateRange.end) && (
+          <span className="ml-2 text-blue-600 dark:text-blue-400">
+            (filtrado por fechas en zona horaria de Brasil)
+          </span>
+        )}
       </div>
 
       {/* Medications List */}
@@ -168,7 +191,7 @@ const History = () => {
           </h3>
           <p className="text-medical-600 dark:text-medical-400 mb-4">
             {medications.length === 0 
-              ? 'Aún no has registrado ningún medicamento'
+              ? 'Aún no has registrado ningún medicamento' 
               : 'Intenta ajustar los filtros de búsqueda'
             }
           </p>
@@ -221,7 +244,7 @@ const History = () => {
               </div>
               
               <div className="text-sm text-medical-600 dark:text-medical-400 mb-2">
-                {format(new Date(med.dateTime), "EEEE, d 'de' MMMM 'a las' HH:mm", { locale: es })}
+                🇧🇷 {formatDateBrazil(med.dateTime)}
               </div>
               
               {med.notes && (

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { format } from 'date-fns';
 import { useMedication } from '../context/MedicationContext';
+import { formatForInput, getCurrentDateTime } from '../utils/dateUtils';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
@@ -12,15 +12,17 @@ const AddMedication = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { addMedication, updateMedication, getMedicationById, commonMedications, isLoading } = useMedication();
+  
   const isEditing = Boolean(id);
   const existingMedication = isEditing ? getMedicationById(id) : null;
-
+  
   const [formData, setFormData] = useState({
     name: '',
     quantity: 1,
-    dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+    dateTime: getCurrentDateTime(),
     notes: ''
   });
+  
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -30,7 +32,7 @@ const AddMedication = () => {
       setFormData({
         name: existingMedication.name,
         quantity: existingMedication.quantity,
-        dateTime: format(new Date(existingMedication.dateTime), "yyyy-MM-dd'T'HH:mm"),
+        dateTime: formatForInput(new Date(existingMedication.dateTime)),
         notes: existingMedication.notes || ''
       });
     }
@@ -38,7 +40,7 @@ const AddMedication = () => {
 
   useEffect(() => {
     if (formData.name) {
-      const filtered = commonMedications.filter(med => 
+      const filtered = commonMedications.filter(med =>
         med.toLowerCase().includes(formData.name.toLowerCase())
       );
       setFilteredSuggestions(filtered);
@@ -54,7 +56,7 @@ const AddMedication = () => {
       alert('Por favor ingresa el nombre del medicamento');
       return;
     }
-    
+
     try {
       setIsSaving(true);
       
@@ -63,15 +65,15 @@ const AddMedication = () => {
         dateTime: new Date(formData.dateTime).toISOString(),
         quantity: parseInt(formData.quantity)
       };
-      
+
       console.log('Submitting medication data:', medicationData);
-      
+
       if (isEditing) {
         await updateMedication(id, medicationData);
       } else {
         await addMedication(medicationData);
       }
-      
+
       navigate('/');
     } catch (error) {
       console.error('Error saving medication:', error);
@@ -120,7 +122,7 @@ const AddMedication = () => {
                 className="absolute right-3 top-1/2 transform -translate-y-1/2 text-medical-400 pointer-events-none"
               />
             </div>
-            
+
             {showSuggestions && filteredSuggestions.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -193,8 +195,7 @@ const AddMedication = () => {
               type="submit"
               disabled={isSaving || isLoading}
               className={`
-                flex-1 bg-primary-600 hover:bg-primary-700 text-white py-3 px-6 rounded-lg 
-                font-medium flex items-center justify-center space-x-2
+                flex-1 bg-primary-600 hover:bg-primary-700 text-white py-3 px-6 rounded-lg font-medium flex items-center justify-center space-x-2
                 ${(isSaving || isLoading) ? 'opacity-70 cursor-not-allowed' : ''}
               `}
             >
@@ -205,7 +206,7 @@ const AddMedication = () => {
               )}
               <span>{isEditing ? 'Actualizar' : 'Guardar'}</span>
             </motion.button>
-            
+
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -213,8 +214,7 @@ const AddMedication = () => {
               onClick={() => navigate('/')}
               disabled={isSaving || isLoading}
               className={`
-                flex-1 bg-medical-500 hover:bg-medical-600 text-white py-3 px-6 rounded-lg 
-                font-medium flex items-center justify-center space-x-2
+                flex-1 bg-medical-500 hover:bg-medical-600 text-white py-3 px-6 rounded-lg font-medium flex items-center justify-center space-x-2
                 ${(isSaving || isLoading) ? 'opacity-70 cursor-not-allowed' : ''}
               `}
             >
@@ -222,7 +222,7 @@ const AddMedication = () => {
               <span>Cancelar</span>
             </motion.button>
           </div>
-          
+
           {/* Debug Info in Development */}
           {process.env.NODE_ENV !== 'production' && (
             <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-xs">

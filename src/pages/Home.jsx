@@ -1,9 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import { useMedication } from '../context/MedicationContext';
+import { formatTimeBrazil } from '../utils/dateUtils';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
@@ -11,7 +10,7 @@ const { FiPlus, FiClock, FiTrendingUp, FiActivity } = FiIcons;
 
 const Home = () => {
   const { medications } = useMedication();
-
+  
   const today = new Date();
   const todayMedications = medications.filter(med => {
     const medDate = new Date(med.dateTime);
@@ -24,14 +23,23 @@ const Home = () => {
     return todayMedications.reduce((total, med) => total + med.quantity, 0);
   };
 
+  const formatTodayDate = () => {
+    const weekdays = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const months = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    
+    const weekday = weekdays[today.getDay()];
+    const day = today.getDate();
+    const month = months[today.getMonth()];
+    
+    return `${weekday}, ${day} de ${month}`;
+  };
+
   const container = {
     hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
+    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
 
   const item = {
@@ -51,13 +59,16 @@ const Home = () => {
         <h2 className="text-2xl font-bold text-medical-800 dark:text-medical-200 mb-2">
           Bienvenido
         </h2>
-        <p className="text-medical-600 dark:text-medical-400">
-          {format(today, "EEEE, d 'de' MMMM", { locale: es })}
+        <p className="text-medical-600 dark:text-medical-400 capitalize">
+          {formatTodayDate()}
         </p>
       </motion.div>
 
       {/* Today's Summary */}
-      <motion.div variants={item} className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl p-6 text-white shadow-lg">
+      <motion.div
+        variants={item}
+        className="bg-gradient-to-r from-primary-500 to-primary-600 rounded-xl p-6 text-white shadow-lg"
+      >
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Resumen de Hoy</h3>
           <SafeIcon icon={FiActivity} className="text-2xl" />
@@ -119,7 +130,7 @@ const Home = () => {
             Ver todos
           </Link>
         </div>
-        
+
         {recentMedications.length === 0 ? (
           <div className="bg-white dark:bg-medical-800 rounded-xl p-6 text-center border border-medical-200 dark:border-medical-700">
             <SafeIcon icon={FiClock} className="text-4xl text-medical-400 mx-auto mb-2" />
@@ -148,7 +159,7 @@ const Home = () => {
                     </p>
                   </div>
                   <span className="text-xs text-medical-500 dark:text-medical-400">
-                    {format(new Date(med.dateTime), 'HH:mm')}
+                    {formatTimeBrazil(med.dateTime)}
                   </span>
                 </div>
               </motion.div>

@@ -1,33 +1,30 @@
-import React,{useMemo} from 'react';
-import {motion} from 'framer-motion';
-import {format,subDays,subWeeks,subMonths,isAfter} from 'date-fns';
-import {es} from 'date-fns/locale';
-import {useMedication} from '../context/MedicationContext';
+import React, { useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { useMedication } from '../context/MedicationContext';
 import ReactECharts from 'echarts-for-react';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
-const {FiTrendingUp,FiPieChart,FiBarChart,FiActivity}=FiIcons;
+const { FiTrendingUp, FiPieChart, FiBarChart, FiActivity } = FiIcons;
 
-const Statistics=()=> {
-  const {medications}=useMedication();
+const Statistics = () => {
+  const { medications } = useMedication();
 
-  const stats=useMemo(()=> {
-    const now=new Date();
-    const last7Days=subDays(now,7);
-    const last30Days=subDays(now,30);
-    const last3Months=subMonths(now,3);
+  const stats = useMemo(() => {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     // Medications in different time periods
-    const medicationsLast7Days=medications.filter(med=> 
-      isAfter(new Date(med.dateTime),last7Days)
+    const medicationsLast7Days = medications.filter(med => 
+      new Date(med.dateTime) > sevenDaysAgo
     );
-    const medicationsLast30Days=medications.filter(med=> 
-      isAfter(new Date(med.dateTime),last30Days)
+    const medicationsLast30Days = medications.filter(med => 
+      new Date(med.dateTime) > thirtyDaysAgo
     );
 
     // Most used medications with better formatting
-    const medicationCounts=medications.reduce((acc,med)=> {
+    const medicationCounts = medications.reduce((acc, med) => {
       // Truncate long medication names
       const shortName = med.name.length > 15 ? med.name.substring(0, 15) + '...' : med.name;
       const originalName = med.name;
@@ -37,31 +34,31 @@ const Statistics=()=> {
       }
       acc[originalName].count += med.quantity;
       return acc;
-    },{});
+    }, {});
 
-    const mostUsed=Object.entries(medicationCounts)
-      .sort(([,a],[,b])=> b.count - a.count)
-      .slice(0,5)
+    const mostUsed = Object.entries(medicationCounts)
+      .sort(([, a], [, b]) => b.count - a.count)
+      .slice(0, 5)
       .map(([name, data]) => [data.shortName, data.count, name]); // [shortName, count, originalName]
 
     // Daily averages
-    const totalPills7Days=medicationsLast7Days.reduce((total,med)=> total + med.quantity,0);
-    const totalPills30Days=medicationsLast30Days.reduce((total,med)=> total + med.quantity,0);
+    const totalPills7Days = medicationsLast7Days.reduce((total, med) => total + med.quantity, 0);
+    const totalPills30Days = medicationsLast30Days.reduce((total, med) => total + med.quantity, 0);
 
     return {
       totalMedications: medications.length,
-      totalPills: medications.reduce((total,med)=> total + med.quantity,0),
-      uniqueMedications: new Set(medications.map(med=> med.name)).size,
+      totalPills: medications.reduce((total, med) => total + med.quantity, 0),
+      uniqueMedications: new Set(medications.map(med => med.name)).size,
       averageDaily7Days: totalPills7Days / 7,
       averageDaily30Days: totalPills30Days / 30,
       mostUsed,
       medicationsLast7Days: medicationsLast7Days.length,
       medicationsLast30Days: medicationsLast30Days.length
     };
-  },[medications]);
+  }, [medications]);
 
   // Improved chart for most used medications
-  const medicationChartOption={
+  const medicationChartOption = {
     tooltip: {
       trigger: 'item',
       formatter: function(params) {
@@ -72,58 +69,56 @@ const Statistics=()=> {
     legend: {
       show: false // Hide legend to save space
     },
-    series: [
-      {
-        name: 'Medicamentos',
-        type: 'pie',
-        radius: ['40%', '70%'], // Make it a donut chart for better readability
-        center: ['50%', '50%'],
-        avoidLabelOverlap: true,
+    series: [{
+      name: 'Medicamentos',
+      type: 'pie',
+      radius: ['40%', '70%'], // Make it a donut chart for better readability
+      center: ['50%', '50%'],
+      avoidLabelOverlap: true,
+      itemStyle: {
+        borderRadius: 8,
+        borderColor: '#fff',
+        borderWidth: 2
+      },
+      label: {
+        show: true,
+        position: 'outside',
+        formatter: function(params) {
+          return `${params.name}\n${params.value}`;
+        },
+        fontSize: 11,
+        color: '#64748b'
+      },
+      labelLine: {
+        show: true,
+        length: 15,
+        length2: 10
+      },
+      data: stats.mostUsed.map(([shortName, count]) => ({
+        value: count,
+        name: shortName,
         itemStyle: {
-          borderRadius: 8,
-          borderColor: '#fff',
-          borderWidth: 2
-        },
-        label: {
-          show: true,
-          position: 'outside',
-          formatter: function(params) {
-            return `${params.name}\n${params.value}`;
-          },
-          fontSize: 11,
-          color: '#64748b'
-        },
-        labelLine: {
-          show: true,
-          length: 15,
-          length2: 10
-        },
-        data: stats.mostUsed.map(([shortName, count]) => ({
-          value: count,
-          name: shortName,
-          itemStyle: {
-            color: [
-              '#0ea5e9', // Primary blue
-              '#10b981', // Green
-              '#f59e0b', // Orange
-              '#ef4444', // Red
-              '#8b5cf6'  // Purple
-            ][stats.mostUsed.findIndex(([n]) => n === shortName)] || '#64748b'
-          }
-        })),
-        emphasis: {
-          itemStyle: {
-            shadowBlur: 10,
-            shadowOffsetX: 0,
-            shadowColor: 'rgba(0,0,0,0.5)'
-          }
+          color: [
+            '#0ea5e9', // Primary blue
+            '#10b981', // Green
+            '#f59e0b', // Orange
+            '#ef4444', // Red
+            '#8b5cf6'  // Purple
+          ][stats.mostUsed.findIndex(([n]) => n === shortName)] || '#64748b'
+        }
+      })),
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0,0,0,0.5)'
         }
       }
-    ]
+    }]
   };
 
   // Weekly trend chart with better styling
-  const weeklyTrendOption={
+  const weeklyTrendOption = {
     tooltip: {
       trigger: 'axis',
       formatter: function(params) {
@@ -140,9 +135,12 @@ const Statistics=()=> {
     },
     xAxis: {
       type: 'category',
-      data: Array.from({length: 7},(_,i)=> {
-        const date=subDays(new Date(),6 - i);
-        return format(date,'EEE d',{locale: es});
+      data: Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - i));
+        
+        const weekdays = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        return `${weekdays[date.getDay()]} ${date.getDate()}`;
       }),
       axisLabel: {
         fontSize: 11,
@@ -161,54 +159,58 @@ const Statistics=()=> {
         }
       }
     },
-    series: [
-      {
-        data: Array.from({length: 7},(_,i)=> {
-          const date=subDays(new Date(),6 - i);
-          const dayMedications=medications.filter(med=> {
-            const medDate=new Date(med.dateTime);
-            return medDate.toDateString()===date.toDateString();
-          });
-          return dayMedications.reduce((total,med)=> total + med.quantity,0);
-        }),
-        type: 'line',
-        smooth: true,
-        symbol: 'circle',
-        symbolSize: 6,
-        lineStyle: {
-          color: '#0ea5e9',
-          width: 3
-        },
-        itemStyle: {
-          color: '#0ea5e9',
-          borderColor: '#fff',
-          borderWidth: 2
-        },
-        areaStyle: {
-          color: {
-            type: 'linear',
-            x: 0,
-            y: 0,
-            x2: 0,
-            y2: 1,
-            colorStops: [
-              {offset: 0, color: 'rgba(14,165,233,0.3)'},
-              {offset: 1, color: 'rgba(14,165,233,0.05)'}
-            ]
-          }
+    series: [{
+      data: Array.from({ length: 7 }, (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (6 - i));
+        
+        const dayMedications = medications.filter(med => {
+          const medDate = new Date(med.dateTime);
+          return medDate.toDateString() === date.toDateString();
+        });
+        
+        return dayMedications.reduce((total, med) => total + med.quantity, 0);
+      }),
+      type: 'line',
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 6,
+      lineStyle: {
+        color: '#0ea5e9',
+        width: 3
+      },
+      itemStyle: {
+        color: '#0ea5e9',
+        borderColor: '#fff',
+        borderWidth: 2
+      },
+      areaStyle: {
+        color: {
+          type: 'linear',
+          x: 0,
+          y: 0,
+          x2: 0,
+          y2: 1,
+          colorStops: [{
+            offset: 0,
+            color: 'rgba(14,165,233,0.3)'
+          }, {
+            offset: 1,
+            color: 'rgba(14,165,233,0.05)'
+          }]
         }
       }
-    ]
+    }]
   };
 
-  const container={
-    hidden: {opacity: 0},
-    show: {opacity: 1,transition: {staggerChildren: 0.1}}
+  const container = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { staggerChildren: 0.1 } }
   };
 
-  const item={
-    hidden: {opacity: 0,y: 20},
-    show: {opacity: 1,y: 0}
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 }
   };
 
   return (
@@ -300,10 +302,7 @@ const Statistics=()=> {
           Tendencia Semanal
         </h3>
         {medications.length > 0 ? (
-          <ReactECharts
-            option={weeklyTrendOption}
-            style={{height: '250px'}}
-          />
+          <ReactECharts option={weeklyTrendOption} style={{ height: '250px' }} />
         ) : (
           <div className="text-center py-8 text-medical-500 dark:text-medical-400">
             No hay suficientes datos para mostrar la tendencia
@@ -321,18 +320,18 @@ const Statistics=()=> {
         </h3>
         {stats.mostUsed.length > 0 ? (
           <>
-            <ReactECharts
-              option={medicationChartOption}
-              style={{height: '350px'}}
-            />
+            <ReactECharts option={medicationChartOption} style={{ height: '350px' }} />
             <div className="mt-6 space-y-3">
               <h4 className="font-medium text-medical-700 dark:text-medical-300 mb-3">
                 Detalles por Medicamento:
               </h4>
               {stats.mostUsed.map(([shortName, count, originalName], index) => (
-                <div key={originalName} className="flex justify-between items-center p-3 bg-medical-50 dark:bg-medical-700 rounded-lg">
+                <div
+                  key={originalName}
+                  className="flex justify-between items-center p-3 bg-medical-50 dark:bg-medical-700 rounded-lg"
+                >
                   <div className="flex items-center space-x-3">
-                    <div 
+                    <div
                       className="w-4 h-4 rounded-full"
                       style={{
                         backgroundColor: [
